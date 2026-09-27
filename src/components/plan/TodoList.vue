@@ -3,6 +3,7 @@ import { computed, ref } from 'vue'
 import { useTravelStore } from '../../stores/travel'
 import { planTodoProgress } from '../../services/selectors'
 import ProgressBar from '../common/ProgressBar.vue'
+import Modal from '../common/Modal.vue'
 
 const props = defineProps({
   planId: { type: String, required: true },
@@ -12,14 +13,22 @@ const store = useTravelStore()
 const plan = computed(() => store.planById(props.planId))
 const todos = computed(() => plan.value?.todos || [])
 const progress = computed(() => planTodoProgress(plan.value))
+const doneCount = computed(() => todos.value.filter((t) => t.done).length)
+const undoneCount = computed(() => todos.value.length - doneCount.value)
 
 const newName = ref('')
+const showClearConfirm = ref(false)
 
 function add() {
   const name = newName.value.trim()
   if (!name) return
   store.addTodo(props.planId, name)
   newName.value = ''
+}
+
+function clearDone() {
+  store.clearDoneTodos(props.planId)
+  showClearConfirm.value = false
 }
 </script>
 
@@ -38,6 +47,21 @@ function add() {
     <ProgressBar :value="progress" class="mt-16">
       <template #label><span>待办完成进度</span></template>
     </ProgressBar>
+
+    <div v-if="todos.length" class="todo-batch mt-16">
+      <button
+        type="button"
+        class="btn btn-ghost btn-sm"
+        :disabled="undoneCount === 0"
+        @click="store.completeAllTodos(planId)"
+      >全部完成</button>
+      <button
+        type="button"
+        class="btn btn-danger btn-sm"
+        :disabled="doneCount === 0"
+        @click="showClearConfirm = true"
+      >清除已完成（{{ doneCount }}）</button>
+    </div>
 
     <ul v-if="todos.length" class="todo-list mt-16">
       <li v-for="todo in todos" :key="todo.id" class="todo-item" :class="{ done: todo.done }">
@@ -58,6 +82,15 @@ function add() {
       </li>
     </ul>
     <p v-else class="empty">暂无待办事项</p>
+
+    <!-- 清除已完成二次确认 -->
+    <Modal :show="showClearConfirm" title="清除已完成待办" @close="showClearConfirm = false">
+      <p>将删除 {{ doneCount }} 条已完成的待办，未完成的待办不受影响。此操作不可恢复。</p>
+      <template #footer>
+        <button type="button" class="btn btn-ghost" @click="showClearConfirm = false">取消</button>
+        <button type="button" class="btn btn-danger" @click="clearDone">确认清除</button>
+      </template>
+    </Modal>
   </div>
 </template>
 
@@ -65,6 +98,12 @@ function add() {
 .todo-add {
   display: flex;
   gap: 8px;
+}
+
+.todo-batch {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
 }
 
 .todo-list {

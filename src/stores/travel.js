@@ -147,6 +147,17 @@ export const useTravelStore = defineStore('travel', {
       if (plan) plan.todos = plan.todos.filter((t) => t.id !== todoId)
     },
 
+    completeAllTodos(planId) {
+      const plan = this.planById(planId)
+      if (plan) plan.todos.forEach((t) => { t.done = true })
+    },
+
+    // 仅移除已完成项，未完成的待办保持不变
+    clearDoneTodos(planId) {
+      const plan = this.planById(planId)
+      if (plan) plan.todos = plan.todos.filter((t) => !t.done)
+    },
+
     // ===== 行程与花费 =====
     addRecord(planId, record) {
       const plan = this.planById(planId)
